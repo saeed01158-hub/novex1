@@ -1056,6 +1056,7 @@
         .slide-up { animation: slideUp 0.4s ease; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
     </style>
+<base target="_blank">
 </head>
 <body>
 
@@ -1236,6 +1237,14 @@
             <a href="#" onclick="app.showToast('قريباً', 'info'); return false;"><i class="fab fa-snapchat"></i></a>
             <a href="#" onclick="app.showToast('قريباً', 'info'); return false;"><i class="fab fa-whatsapp"></i></a>
         </div>
+        <div style="text-align:center;padding:16px 0;border-top:1px solid var(--border);margin-bottom:16px;">
+            <a href="https://wa.me/201000000000" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:#25d366;color:white;border-radius:var(--radius-xl);text-decoration:none;font-size:14px;font-weight:600;transition:var(--transition);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <i class="fab fa-whatsapp" style="font-size:18px;"></i> طلب عبر واتساب
+            </a>
+        </div>
+        <div style="text-align:center;padding:8px 0;">
+            <a href="#admin" style="font-size:11px;color:var(--text-muted);text-decoration:none;opacity:0.5;" onclick="app.openAdmin(); return false;">لوحة التحكم</a>
+        </div>
         <div class="footer-bottom">
             <p>© 2026 Novex - جميع الحقوق محفوظة</p>
         </div>
@@ -1402,6 +1411,8 @@
             window.addEventListener('scroll', () => {
                 header.classList.toggle('scrolled', window.scrollY > 10);
             });
+            this.checkAdminAccess();
+            window.addEventListener('hashchange', () => this.checkAdminAccess());
         }
 
         // ===== HERO SLIDER =====
@@ -1680,15 +1691,211 @@
         }
 
         checkout() {
-            this.showToast('جاري إتمام الطلب...', 'success');
-            setTimeout(() => {
-                this.cart = [];
-                this.saveCart();
-                this.updateBadges();
-                this.closeCart();
-                this.showToast('تم تأكيد طلبك بنجاح! 🎉', 'success');
-            }, 1500);
+            if (this.cart.length === 0) {
+                this.showToast('السلة فارغة', 'error');
+                return;
+            }
+            this.openCheckoutForm();
         }
+
+        openCheckoutForm() {
+            const total = this.cart.reduce((s, i) => {
+                const p = PRODUCTS.find(x => x.id === i.id);
+                return s + (p ? p.price * i.qty : 0);
+            }, 0);
+
+            const itemsList = this.cart.map(item => {
+                const p = PRODUCTS.find(x => x.id === item.id);
+                return `${p.name} × ${item.qty} = ${p.price * item.qty} ج.م`;
+            }).join('\n');
+
+            const modal = document.createElement('div');
+            modal.id = 'checkout-modal';
+            modal.style.cssText = `position:fixed;inset:0;z-index:3000;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;`;
+            modal.innerHTML = `
+                <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:var(--bg);z-index:10;">
+                    <button class="drawer-close" onclick="document.getElementById('checkout-modal').remove();document.body.style.overflow='';"><i class="fas fa-arrow-right"></i></button>
+                    <h3 style="font-size:18px;font-weight:700;">إتمام الطلب</h3>
+                </div>
+                <div style="padding:20px 16px;max-width:500px;margin:0 auto;width:100%;">
+                    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+                        <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">ملخص الطلب</h4>
+                        <div style="font-size:13px;color:var(--text-secondary);line-height:1.8;white-space:pre-line;margin-bottom:12px;">${itemsList}</div>
+                        <div style="border-top:1px solid var(--border);padding-top:12px;font-size:18px;font-weight:700;">الإجمالي: ${total} ج.م</div>
+                    </div>
+
+                    <form id="checkout-form" onsubmit="app.submitOrder(event)">
+                        <div style="margin-bottom:16px;">
+                            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">الاسم الكامل *</label>
+                            <input type="text" name="name" required placeholder="محمد أحمد"
+                                style="width:100%;padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit;font-size:14px;outline:none;">
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">رقم الهاتف *</label>
+                            <input type="tel" name="phone" required placeholder="01xxxxxxxx"
+                                style="width:100%;padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit;font-size:14px;outline:none;direction:ltr;text-align:right;">
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">البريد الإلكتروني</label>
+                            <input type="email" name="email" placeholder="example@email.com"
+                                style="width:100%;padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit;font-size:14px;outline:none;direction:ltr;text-align:right;">
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">العنوان بالتفصيل *</label>
+                            <textarea name="address" required rows="3" placeholder="المدينة، الحي، الشارع، رقم العمارة، الشقة"
+                                style="width:100%;padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit;font-size:14px;outline:none;resize:vertical;"></textarea>
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">ملاحظات (اختياري)</label>
+                            <textarea name="notes" rows="2" placeholder="أي ملاحظات خاصة بالطلب"
+                                style="width:100%;padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit;font-size:14px;outline:none;resize:vertical;"></textarea>
+                        </div>
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">طريقة الدفع</label>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <label style="flex:1;min-width:120px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);cursor:pointer;display:flex;align-items:center;gap:8px;">
+                                    <input type="radio" name="payment" value="cod" checked style="accent-color:var(--accent);">
+                                    <span style="font-size:13px;">الدفع عند الاستلام</span>
+                                </label>
+                                <label style="flex:1;min-width:120px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);cursor:pointer;display:flex;align-items:center;gap:8px;">
+                                    <input type="radio" name="payment" value="vodafone" style="accent-color:var(--accent);">
+                                    <span style="font-size:13px;">فودافون كاش</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width:100%;">
+                            <i class="fas fa-paper-plane"></i> إرسال الطلب
+                        </button>
+                        <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:12px;">
+                            <i class="fas fa-lock"></i> بياناتك محمية وآمنة
+                        </p>
+                    </form>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.body.style.overflow = 'hidden';
+            this.closeCart();
+        }
+
+        async submitOrder(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+
+            const total = this.cart.reduce((s, i) => {
+                const p = PRODUCTS.find(x => x.id === i.id);
+                return s + (p ? p.price * i.qty : 0);
+            }, 0);
+
+            const itemsList = this.cart.map(item => {
+                const p = PRODUCTS.find(x => x.id === item.id);
+                return `${p.name} × ${item.qty} = ${p.price * item.qty} ج.م`;
+            }).join('\n');
+
+            const orderData = {
+                name: formData.get('name'),
+                phone: formData.get('phone'),
+                email: formData.get('email'),
+                address: formData.get('address'),
+                notes: formData.get('notes'),
+                payment: formData.get('payment'),
+                items: itemsList,
+                total: total,
+                date: new Date().toLocaleString('ar-EG'),
+                orderId: 'NOV-' + Date.now().toString(36).toUpperCase()
+            };
+
+            // Save order locally first
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            orders.push(orderData);
+            localStorage.setItem('orders', JSON.stringify(orders));
+
+            // Clear cart
+            this.cart = [];
+            this.saveCart();
+            this.updateBadges();
+            document.getElementById('checkout-modal').remove();
+            document.body.style.overflow = '';
+
+            // Show success with sharing options
+            this.showOrderSuccess(orderData);
+        }
+
+        showOrderSuccess(order) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px;`;
+
+            const orderText = `طلب جديد من Novex%0Aرقم الطلب: ${order.orderId}%0Aالاسم: ${order.name}%0Aالهاتف: ${order.phone}%0Aالإيميل: ${order.email || '—'}%0Aالعنوان: ${order.address}%0Aالملاحظات: ${order.notes || '—'}%0Aالدفع: ${order.payment === 'cod' ? 'الدفع عند الاستلام' : 'فودافون كاش'}%0Aالمنتجات:%0A${order.items.replace(/\n/g, '%0A')}%0Aالإجمالي: ${order.total} ج.م%0Aالتاريخ: ${order.date}`;
+
+            const emailBody = `طلب جديد من Novex\n\nرقم الطلب: ${order.orderId}\nالاسم: ${order.name}\nالهاتف: ${order.phone}\nالإيميل: ${order.email || '—'}\nالعنوان: ${order.address}\nالملاحظات: ${order.notes || '—'}\nالدفع: ${order.payment === 'cod' ? 'الدفع عند الاستلام' : 'فودافون كاش'}\n\nالمنتجات:\n${order.items}\n\nالإجمالي: ${order.total} ج.م\nالتاريخ: ${order.date}`;
+
+            modal.innerHTML = `
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;max-width:450px;width:100%;max-height:90vh;overflow-y:auto;text-align:center;">
+                    <div style="width:60px;height:60px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;color:white;">✓</div>
+                    <h3 style="font-size:20px;font-weight:700;margin-bottom:8px;">تم تأكيد طلبك!</h3>
+                    <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;">رقم الطلب: <strong style="color:var(--text);">${order.orderId}</strong></p>
+
+                    <div style="background:var(--bg);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;text-align:right;direction:rtl;font-size:13px;line-height:1.8;white-space:pre-line;">
+                        <strong>الاسم:</strong> ${order.name}\n
+                        <strong>الهاتف:</strong> ${order.phone}\n
+                        <strong>العنوان:</strong> ${order.address}\n
+                        <strong>الإجمالي:</strong> ${order.total} ج.م
+                    </div>
+
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">اختر طريقة لإرسال الطلب للتاجر:</p>
+
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <a href="https://wa.me/?text=${orderText}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#25d366;color:white;border-radius:var(--radius-xl);text-decoration:none;font-size:15px;font-weight:600;transition:var(--transition);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <i class="fab fa-whatsapp" style="font-size:20px;"></i> إرسال عبر واتساب
+                        </a>
+
+                        <a href="mailto:?subject=طلب جديد من Novex - ${order.orderId}&body=${encodeURIComponent(emailBody)}" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--accent);color:white;border-radius:var(--radius-xl);text-decoration:none;font-size:15px;font-weight:600;transition:var(--transition);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <i class="fas fa-envelope" style="font-size:18px;"></i> إرسال عبر البريد الإلكتروني
+                        </a>
+
+                        <button onclick="app.copyOrderText('${order.orderId}')" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--bg-elevated);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-xl);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:var(--transition);" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+                            <i class="fas fa-copy" style="font-size:18px;"></i> نسخ بيانات الطلب
+                        </button>
+                    </div>
+
+                    <div style="margin-top:20px;padding:12px;background:rgba(196,30,58,0.1);border-radius:var(--radius-md);border:1px solid rgba(196,30,58,0.2);">
+                        <p style="font-size:12px;color:var(--text-secondary);line-height:1.6;">
+                            <i class="fas fa-info-circle" style="color:var(--accent);"></i>
+                            <strong>لاستلام الطلبات تلقائياً على إيميلك:</strong><br>
+                            سجل على <a href="https://formspree.io" target="_blank" style="color:var(--accent);">Formspree</a> (مجاني) وضع ID في الكود
+                        </p>
+                    </div>
+
+                    <button onclick="this.parentElement.parentElement.remove()" style="margin-top:16px;padding:10px 24px;background:transparent;border:1px solid var(--border);color:var(--text-secondary);border-radius:var(--radius-xl);font-family:inherit;font-size:14px;cursor:pointer;">
+                        إغلاق
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        copyOrderText(orderId) {
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const order = orders.find(o => o.orderId === orderId);
+            if (!order) return;
+
+            const text = `طلب جديد من Novex\nرقم الطلب: ${order.orderId}\nالاسم: ${order.name}\nالهاتف: ${order.phone}\nالإيميل: ${order.email || '—'}\nالعنوان: ${order.address}\nالملاحظات: ${order.notes || '—'}\nالدفع: ${order.payment === 'cod' ? 'الدفع عند الاستلام' : 'فودافون كاش'}\nالمنتجات:\n${order.items}\nالإجمالي: ${order.total} ج.م\nالتاريخ: ${order.date}`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                this.showToast('تم نسخ بيانات الطلب!', 'success');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                this.showToast('تم نسخ بيانات الطلب!', 'success');
+            });
+        }
+
+
 
         // ===== WISHLIST =====
         toggleWishlistItem(id) {
@@ -1816,9 +2023,127 @@
         toggleMenu() {
             this.showToast('القائمة قريباً', 'info');
         }
-    }
+        
+        // ===== ADMIN PANEL =====
+        openAdmin() {
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const modal = document.createElement('div');
+            modal.id = 'admin-panel';
+            modal.style.cssText = `position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;`;
+
+            let ordersHtml = '';
+            if (orders.length === 0) {
+                ordersHtml = `<div style="text-align:center;padding:40px;color:var(--text-muted);"><i class="fas fa-inbox" style="font-size:48px;margin-bottom:16px;opacity:0.3;"></i><p>لا توجد طلبات حتى الآن</p></div>`;
+            } else {
+                ordersHtml = orders.slice().reverse().map((o, i) => `
+                    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <span style="font-weight:700;color:var(--accent);">${o.orderId}</span>
+                            <span style="font-size:12px;color:var(--text-muted);">${o.date}</span>
+                        </div>
+                        <div style="font-size:13px;line-height:1.8;color:var(--text-secondary);white-space:pre-line;direction:rtl;text-align:right;margin-bottom:12px;">
+                            <strong>الاسم:</strong> ${o.name}\n
+                            <strong>الهاتف:</strong> ${o.phone}\n
+                            <strong>العنوان:</strong> ${o.address}\n
+                            <strong>الإجمالي:</strong> ${o.total} ج.م
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="app.copyOrderText('${o.orderId}')" style="flex:1;padding:8px;background:var(--bg-elevated);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;cursor:pointer;">
+                                <i class="fas fa-copy"></i> نسخ
+                            </button>
+                            <button onclick="app.deleteOrder('${o.orderId}')" style="padding:8px 12px;background:var(--bg-elevated);border:1px solid var(--border);color:var(--accent);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;cursor:pointer;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            modal.innerHTML = `
+                <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:10;">
+                    <h3 style="font-size:18px;font-weight:700;">لوحة التحكم - الطلبات (${orders.length})</h3>
+                    <button class="drawer-close" onclick="document.getElementById('admin-panel').remove();document.body.style.overflow='';"><i class="fas fa-times"></i></button>
+                </div>
+                <div style="padding:16px;max-width:600px;margin:0 auto;width:100%;">
+                    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+                        <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;"><i class="fas fa-cog"></i> إعدادات الإشعارات</h4>
+                        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
+                            لاستلام الطلبات تلقائياً على إيميلك، سجل على 
+                            <a href="https://formspree.io" target="_blank" style="color:var(--accent);">Formspree</a> 
+                            (مجاني) وضع ID هنا:
+                        </p>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="formspree-id" placeholder="xxxxxxxxx" value="${localStorage.getItem('formspreeId') || ''}"
+                                style="flex:1;padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:13px;outline:none;direction:ltr;">
+                            <button onclick="app.saveFormspreeId()" style="padding:10px 16px;background:var(--accent);color:white;border:none;border-radius:var(--radius-md);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;">
+                                حفظ
+                            </button>
+                        </div>
+                        <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">
+                            <i class="fas fa-info-circle"></i> بدون ID، الطلبات تتحفظ محلياً فقط
+                        </p>
+                    </div>
+
+                    <div style="display:flex;gap:8px;margin-bottom:16px;">
+                        <button onclick="app.exportOrders()" style="flex:1;padding:10px;background:var(--bg-elevated);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-md);font-family:inherit;font-size:13px;cursor:pointer;">
+                            <i class="fas fa-download"></i> تصدير الكل
+                        </button>
+                        <button onclick="if(confirm('مسح كل الطلبات؟')){localStorage.removeItem('orders');app.openAdmin();}" style="padding:10px 16px;background:var(--bg-elevated);border:1px solid var(--border);color:var(--accent);border-radius:var(--radius-md);font-family:inherit;font-size:13px;cursor:pointer;">
+                            <i class="fas fa-trash-alt"></i> مسح الكل
+                        </button>
+                    </div>
+
+                    ${ordersHtml}
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.body.style.overflow = 'hidden';
+        }
+
+        saveFormspreeId() {
+            const id = document.getElementById('formspree-id').value.trim();
+            if (id) {
+                localStorage.setItem('formspreeId', id);
+                this.showToast('تم حفظ Formspree ID!', 'success');
+            } else {
+                localStorage.removeItem('formspreeId');
+                this.showToast('تم إزالة Formspree ID', 'info');
+            }
+        }
+
+        deleteOrder(orderId) {
+            let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            orders = orders.filter(o => o.orderId !== orderId);
+            localStorage.setItem('orders', JSON.stringify(orders));
+            this.openAdmin();
+            this.showToast('تم حذف الطلب', 'info');
+        }
+
+        exportOrders() {
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            if (orders.length === 0) {
+                this.showToast('لا توجد طلبات للتصدير', 'error');
+                return;
+            }
+            const data = JSON.stringify(orders, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `novex-orders-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            this.showToast('تم تصدير الطلبات!', 'success');
+        }
+
+        // Check for admin access via URL hash
+        checkAdminAccess() {
+            if (window.location.hash === '#admin') {
+                this.openAdmin();
+            }
+        }    }
 
     const app = new App();
     </script>
 </body>
-</html>
+    </html>
