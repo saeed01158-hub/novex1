@@ -1789,8 +1789,8 @@
 
             const itemsList = this.cart.map(item => {
                 const p = PRODUCTS.find(x => x.id === item.id);
-                return `${p.name} × ${item.qty} = ${p.price * item.qty} ج.م`;
-            }).join('\n');
+                return `• ${p.name} × ${item.qty} = ${p.price * item.qty} ج.م`;
+            }).join('%0A');
 
             const orderData = {
                 name: formData.get('name'),
@@ -1805,7 +1805,7 @@
                 orderId: 'NOV-' + Date.now().toString(36).toUpperCase()
             };
 
-            // Save order locally first
+            // Save order locally
             const orders = JSON.parse(localStorage.getItem('orders') || '[]');
             orders.push(orderData);
             localStorage.setItem('orders', JSON.stringify(orders));
@@ -1817,62 +1817,78 @@
             document.getElementById('checkout-modal').remove();
             document.body.style.overflow = '';
 
-            // Show success with sharing options
-            this.showOrderSuccess(orderData);
+            // Send WhatsApp message directly to owner
+            this.sendWhatsAppOrder(orderData);
         }
 
-        showOrderSuccess(order) {
+        sendWhatsAppOrder(order) {
+            // Owner WhatsApp number: +201008196405 (Egypt format)
+            const ownerNumber = '201008196405';
+
+            const message = `🛒 *طلب جديد من Novex!*%0A%0A` +
+                `📋 *رقم الطلب:* ${order.orderId}%0A` +
+                `👤 *الاسم:* ${order.name}%0A` +
+                `📱 *الهاتف:* ${order.phone}%0A` +
+                `📧 *الإيميل:* ${order.email || '—'}%0A` +
+                `🏠 *العنوان:* ${order.address}%0A` +
+                `💳 *الدفع:* ${order.payment === 'cod' ? 'الدفع عند الاستلام 💵' : 'فودافون كاش 📲'}%0A` +
+                `📝 *ملاحظات:* ${order.notes || 'لا يوجد'}%0A%0A` +
+                `📦 *المنتجات:*%0A${order.items}%0A%0A` +
+                `💰 *الإجمالي:* ${order.total} ج.م%0A` +
+                `📅 *التاريخ:* ${order.date}%0A%0A` +
+                `✅ *يرجى التواصل مع العميل لتأكيد الطلب*`;
+
+            // Open WhatsApp with pre-filled message
+            const waUrl = `https://wa.me/${ownerNumber}?text=${message}`;
+
+            // Show confirmation modal
+            this.showWhatsAppConfirm(order, waUrl);
+        }
+
+        showWhatsAppConfirm(order, waUrl) {
             const modal = document.createElement('div');
             modal.style.cssText = `position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px;`;
-
-            const orderText = `طلب جديد من Novex%0Aرقم الطلب: ${order.orderId}%0Aالاسم: ${order.name}%0Aالهاتف: ${order.phone}%0Aالإيميل: ${order.email || '—'}%0Aالعنوان: ${order.address}%0Aالملاحظات: ${order.notes || '—'}%0Aالدفع: ${order.payment === 'cod' ? 'الدفع عند الاستلام' : 'فودافون كاش'}%0Aالمنتجات:%0A${order.items.replace(/\n/g, '%0A')}%0Aالإجمالي: ${order.total} ج.م%0Aالتاريخ: ${order.date}`;
-
-            const emailBody = `طلب جديد من Novex\n\nرقم الطلب: ${order.orderId}\nالاسم: ${order.name}\nالهاتف: ${order.phone}\nالإيميل: ${order.email || '—'}\nالعنوان: ${order.address}\nالملاحظات: ${order.notes || '—'}\nالدفع: ${order.payment === 'cod' ? 'الدفع عند الاستلام' : 'فودافون كاش'}\n\nالمنتجات:\n${order.items}\n\nالإجمالي: ${order.total} ج.م\nالتاريخ: ${order.date}`;
-
             modal.innerHTML = `
-                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;max-width:450px;width:100%;max-height:90vh;overflow-y:auto;text-align:center;">
-                    <div style="width:60px;height:60px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;color:white;">✓</div>
-                    <h3 style="font-size:20px;font-weight:700;margin-bottom:8px;">تم تأكيد طلبك!</h3>
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;max-width:420px;width:100%;text-align:center;">
+                    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#25d366,#128C7E);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px;color:white;box-shadow:0 4px 20px rgba(37,211,102,0.3);">
+                        <i class="fab fa-whatsapp"></i>
+                    </div>
+                    <h3 style="font-size:22px;font-weight:700;margin-bottom:8px;">✅ تم تأكيد طلبك!</h3>
                     <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;">رقم الطلب: <strong style="color:var(--text);">${order.orderId}</strong></p>
 
-                    <div style="background:var(--bg);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;text-align:right;direction:rtl;font-size:13px;line-height:1.8;white-space:pre-line;">
+                    <div style="background:var(--bg);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;text-align:right;direction:rtl;font-size:13px;line-height:1.8;white-space:pre-line;border:1px solid var(--border);">
                         <strong>الاسم:</strong> ${order.name}\n
                         <strong>الهاتف:</strong> ${order.phone}\n
                         <strong>العنوان:</strong> ${order.address}\n
                         <strong>الإجمالي:</strong> ${order.total} ج.م
                     </div>
 
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">اختر طريقة لإرسال الطلب للتاجر:</p>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+                        <i class="fas fa-paper-plane" style="color:var(--accent);"></i>
+                        اضغط الزر تحت عشان تبعت تفاصيل الطلب للتاجر مباشرة على واتساب
+                    </p>
 
-                    <div style="display:flex;flex-direction:column;gap:10px;">
-                        <a href="https://wa.me/?text=${orderText}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#25d366;color:white;border-radius:var(--radius-xl);text-decoration:none;font-size:15px;font-weight:600;transition:var(--transition);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                            <i class="fab fa-whatsapp" style="font-size:20px;"></i> إرسال عبر واتساب
-                        </a>
+                    <a href="${waUrl}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;background:linear-gradient(135deg,#25d366,#128C7E);color:white;border-radius:var(--radius-xl);text-decoration:none;font-size:16px;font-weight:700;transition:var(--transition);margin-bottom:12px;box-shadow:0 4px 20px rgba(37,211,102,0.3);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <i class="fab fa-whatsapp" style="font-size:22px;"></i>
+                        إرسال الطلب عبر واتساب
+                    </a>
 
-                        <a href="mailto:?subject=طلب جديد من Novex - ${order.orderId}&body=${encodeURIComponent(emailBody)}" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--accent);color:white;border-radius:var(--radius-xl);text-decoration:none;font-size:15px;font-weight:600;transition:var(--transition);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                            <i class="fas fa-envelope" style="font-size:18px;"></i> إرسال عبر البريد الإلكتروني
-                        </a>
-
-                        <button onclick="app.copyOrderText('${order.orderId}')" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--bg-elevated);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-xl);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:var(--transition);" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-                            <i class="fas fa-copy" style="font-size:18px;"></i> نسخ بيانات الطلب
-                        </button>
-                    </div>
-
-                    <div style="margin-top:20px;padding:12px;background:rgba(196,30,58,0.1);border-radius:var(--radius-md);border:1px solid rgba(196,30,58,0.2);">
-                        <p style="font-size:12px;color:var(--text-secondary);line-height:1.6;">
-                            <i class="fas fa-info-circle" style="color:var(--accent);"></i>
-                            <strong>لاستلام الطلبات تلقائياً على إيميلك:</strong><br>
-                            سجل على <a href="https://formspree.io" target="_blank" style="color:var(--accent);">Formspree</a> (مجاني) وضع ID في الكود
-                        </p>
-                    </div>
-
-                    <button onclick="this.parentElement.parentElement.remove()" style="margin-top:16px;padding:10px 24px;background:transparent;border:1px solid var(--border);color:var(--text-secondary);border-radius:var(--radius-xl);font-family:inherit;font-size:14px;cursor:pointer;">
+                    <button onclick="this.parentElement.parentElement.remove()" style="padding:10px 24px;background:transparent;border:1px solid var(--border);color:var(--text-secondary);border-radius:var(--radius-xl);font-family:inherit;font-size:14px;cursor:pointer;transition:var(--transition);">
                         إغلاق
                     </button>
                 </div>
             `;
             document.body.appendChild(modal);
+
+            // Auto-open WhatsApp after 2 seconds on mobile
+            if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                setTimeout(() => {
+                    window.location.href = waUrl;
+                }, 2000);
+            }
         }
+
+
 
         copyOrderText(orderId) {
             const orders = JSON.parse(localStorage.getItem('orders') || '[]');
